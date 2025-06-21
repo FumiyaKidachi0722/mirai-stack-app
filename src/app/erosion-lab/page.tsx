@@ -1,114 +1,171 @@
-"use client"
+'use client';
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from 'react';
 
-const GRID_SIZE = 32;
-const SCALE = 12; // pixel per cell
+/** Grid and simulation constants */
+const GRID_SIZE = 40;
+const CELL_SIZE = 12; // pixel per cell
+const FLOW_FACTOR = 0.25;
+const EROSION_RATE = 0.02;
 
-type Terrain = number[][];
+/** Terrain cell with ground height and water depth */
+interface Cell {
+  h: number;
+  w: number;
+}
+type Terrain = Cell[][];
 
-function initTerrain(): Terrain {
+function createTerrain(): Terrain {
   const t: Terrain = [];
   for (let y = 0; y < GRID_SIZE; y++) {
-    const row: number[] = [];
+    const row: Cell[] = [];
     for (let x = 0; x < GRID_SIZE; x++) {
-      const base = 1 - y / GRID_SIZE * 0.8; // gentle slope
-      row.push(base + Math.random() * 0.2);
+      const base = 1 - (y / GRID_SIZE) * 0.8; // gentle slope
+      row.push({ h: base + Math.random() * 0.2, w: 0 });
     }
     t.push(row);
   }
   return t;
 }
 
-function stepErosion(terrain: Terrain): Terrain {
-  const t = terrain.map(row => row.slice());
-  for (let y = 1; y < GRID_SIZE - 1; y++) {
-    for (let x = 1; x < GRID_SIZE - 1; x++) {
-      const curr = terrain[y][x];
-      let minN = curr;
-      let minPos: [number, number] = [y, x];
-      const neighbors: [number, number][] = [
-        [y - 1, x],
-        [y + 1, x],
-        [y, x - 1],
-        [y, x + 1],
-      ];
+function cloneTerrain(t: Terrain): Terrain {
+  return t.map((row) => row.map((c) => ({ ...c })));
+}
+
+/** Single simulation step with rainfall and water flow */
+function step(t: Terrain, rain: number): Terrain {
+  const res = cloneTerrain(t);
+  const flow: number[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array(GRID_SIZE).fill(0)
+  );
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const cell = t[y][x];
+      cell.w += rain;
+      const neighbors: [number, number][] = [];
+      if (y > 0) neighbors.push([y - 1, x]);
+      if (y < GRID_SIZE - 1) neighbors.push([y + 1, x]);
+      if (x > 0) neighbors.push([y, x - 1]);
+      if (x < GRID_SIZE - 1) neighbors.push([y, x + 1]);
+      const level = cell.h + cell.w;
       for (const [ny, nx] of neighbors) {
-        if (terrain[ny][nx] < minN) {
-          minN = terrain[ny][nx];
-          minPos = [ny, nx];
+        const nLevel = t[ny][nx].h + t[ny][nx].w;
+        const diff = level - nLevel;
+        if (diff > 0) {
+          const amt = diff * FLOW_FACTOR;
+          flow[y][x] -= amt;
+          flow[ny][nx] += amt;
         }
-      }
-      const diff = curr - minN;
-      if (diff > 0) {
-        const delta = diff * 0.05;
-        t[y][x] -= delta;
-        const [ny, nx] = minPos;
-        t[ny][nx] += delta; // deposit
       }
     }
   }
-  return t;
-}
-
-function drawTerrain(ctx: CanvasRenderingContext2D, terrain: Terrain) {
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
-      const h = terrain[y][x];
-      const c = Math.floor(200 * h);
-      ctx.fillStyle = `rgb(${c},${c},${255})`;
-      ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+      const change = flow[y][x];
+      res[y][x].w += change;
+      const erode = Math.max(0, -change) * EROSION_RATE;
+      res[y][x].h = Math.max(0, res[y][x].h - erode);
+    }
+  }
+  return res;
+}
+
+function draw(ctx: CanvasRenderingContext2D, t: Terrain) {
+  ctx.clearRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const { h, w } = t[y][x];
+      const g = Math.floor(160 * h + 40);
+      ctx.fillStyle = `rgb(${g}, ${g}, 120)`;
+      ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      if (w > 0.001) {
+        const a = Math.min(1, w);
+        ctx.fillStyle = `rgba(30, 144, 255, ${a})`;
+        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
     }
   }
 }
 
 export default function ErosionLabPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [terrain, setTerrain] = useState<Terrain>(() => initTerrain());
+  const [terrain, setTerrain] = useState<Terrain>(() => createTerrain());
   const [running, setRunning] = useState(false);
+  const [rain, setRain] = useState(0.02);
+  const [raise, setRaise] = useState(false);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    drawTerrain(ctx, terrain);
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d')!;
+    draw(ctx, terrain);
   }, [terrain]);
 
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
-      setTerrain((t) => stepErosion(t));
-    }, 200);
+      setTerrain((t) => step(t, rain));
+    }, 100);
     return () => clearInterval(id);
-  }, [running]);
+  }, [running, rain]);
+
+  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!raise) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+    const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+    setTerrain((t) => {
+      const n = cloneTerrain(t);
+      n[y][x].h = Math.min(2, n[y][x].h + 0.2);
+      return n;
+    });
+  }
+
+  function reset() {
+    setRunning(false);
+    setTerrain(createTerrain());
+  }
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <h1 className="text-xl font-bold">川の侵食ラボ</h1>
       <canvas
         ref={canvasRef}
-        width={GRID_SIZE * SCALE}
-        height={GRID_SIZE * SCALE}
+        width={GRID_SIZE * CELL_SIZE}
+        height={GRID_SIZE * CELL_SIZE}
+        onClick={handleCanvasClick}
         className="border border-gray-300"
       />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <button
-          className="px-4 py-2 bg-blue-500 text-white rounded"
+          className="px-4 py-2 rounded bg-blue-500 text-white"
           onClick={() => setRunning((r) => !r)}
         >
-          {running ? "Pause" : "Start"}
+          {running ? 'Pause' : 'Start'}
         </button>
-        <button
-          className="px-4 py-2 bg-gray-300 rounded"
-          onClick={() => {
-            setRunning(false);
-            setTerrain(initTerrain());
-          }}
-        >
+        <button className="px-4 py-2 rounded bg-gray-300" onClick={reset}>
           Reset
         </button>
+        <label className="flex items-center gap-1 text-sm">
+          Rainfall
+          <input
+            type="range"
+            min={0}
+            max={0.05}
+            step={0.005}
+            value={rain}
+            onChange={(e) => setRain(parseFloat(e.target.value))}
+          />
+        </label>
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={raise}
+            onChange={(e) => setRaise(e.target.checked)}
+          />
+          Raise ground
+        </label>
       </div>
     </div>
   );
 }
-

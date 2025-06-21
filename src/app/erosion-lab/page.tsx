@@ -17,8 +17,9 @@ const SMOOTHING = 0.1;
 
 /** Terrain cell with ground height and water depth */
 interface Cell {
-  h: number;
-  w: number;
+  h: number; // ground height
+  w: number; // water depth
+  s: number; // sediment amount
 }
 type Terrain = Cell[][];
 
@@ -41,7 +42,7 @@ function createTerrain(): Terrain {
       }
       const inRiver = Math.abs(x - centerX) < RIVER_WIDTH / 2;
       const water = inRiver ? RIVER_DEPTH : 0;
-      row.push({ h: base + Math.random() * 0.05, w: water });
+      row.push({ h: base + Math.random() * 0.05, w: water, s: 0 });
     }
     t.push(row);
   }
@@ -66,13 +67,20 @@ function step(t: Terrain, rain: number): Terrain {
   const out: number[][] = Array.from({ length: GRID_SIZE }, () =>
     Array(GRID_SIZE).fill(0)
   );
+  const sedOut: number[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array(GRID_SIZE).fill(0)
+  );
   const inFlow: number[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array(GRID_SIZE).fill(0)
+  );
+  const inSed: number[][] = Array.from({ length: GRID_SIZE }, () =>
     Array(GRID_SIZE).fill(0)
   );
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       const cell = withRain[y][x];
       let water = cell.w;
+      let sed = cell.s;
       const neighbors: [number, number][] = [];
       if (y > 0) neighbors.push([y - 1, x]);
       if (y < GRID_SIZE - 1) neighbors.push([y + 1, x]);
@@ -85,13 +93,19 @@ function step(t: Terrain, rain: number): Terrain {
         const diff = level - nLevel;
         if (diff > 0) {
           const amt = Math.min(water, diff * FLOW_FACTOR);
+          const sedAmt = water > 0 ? (sed * amt) / water : 0;
           flow[y][x] -= amt;
           flow[ny][nx] += amt;
           out[y][x] += amt;
           inFlow[ny][nx] += amt;
+          sedOut[y][x] += sedAmt;
+          inSed[ny][nx] += sedAmt;
           water -= amt;
+          sed -= sedAmt;
         }
       }
+      // store remaining sediment after distributing
+      withRain[y][x].s = sed;
     }
   }
   const res = cloneTerrain(withRain);
@@ -99,6 +113,7 @@ function step(t: Terrain, rain: number): Terrain {
     for (let x = 0; x < GRID_SIZE; x++) {
       const change = flow[y][x];
       res[y][x].w = Math.max(0, res[y][x].w + change - INFILTRATION_RATE);
+      res[y][x].s = Math.max(0, res[y][x].s - sedOut[y][x] + inSed[y][x]);
 
       // calculate average downhill slope
       const h = res[y][x].h;
@@ -128,9 +143,13 @@ function step(t: Terrain, rain: number): Terrain {
 
       const erosion = out[y][x] * (EROSION_RATE + slope * SLOPE_FACTOR);
       res[y][x].h = Math.max(0, res[y][x].h - erosion);
+      res[y][x].s += erosion;
       if (inFlow[y][x] > 0) {
         res[y][x].h += inFlow[y][x] * DEPOSITION_RATE;
       }
+      const deposit = res[y][x].s * DEPOSITION_RATE * Math.max(0, 1 - slope);
+      res[y][x].h += deposit;
+      res[y][x].s -= deposit;
     }
   }
   return smooth(res, SMOOTHING);
@@ -170,8 +189,8 @@ function draw(ctx: CanvasRenderingContext2D, t: Terrain) {
   // draw ground first
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
-      const { h } = t[y][x];
-      const g = Math.floor(160 * h + 40);
+      const { h, s } = t[y][x];
+      const g = Math.floor(160 * h + 40 + s * 80);
       ctx.fillStyle = `rgb(${g}, ${g}, 120)`;
       ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
     }

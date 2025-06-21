@@ -10,6 +10,8 @@ const GRID_SIZE = 80;
 const CELL_SIZE = 6; // pixel per cell
 const FLOW_FACTOR = 0.25;
 const EROSION_RATE = 0.02;
+const INFILTRATION_RATE = 0.001;
+const DEPOSITION_RATE = EROSION_RATE * 0.5;
 
 /** Terrain cell with ground height and water depth */
 interface Cell {
@@ -23,8 +25,10 @@ function createTerrain(): Terrain {
   for (let y = 0; y < GRID_SIZE; y++) {
     const row: Cell[] = [];
     for (let x = 0; x < GRID_SIZE; x++) {
-      const base = 1 - (y / GRID_SIZE) * 0.8; // gentle slope
-      row.push({ h: base + Math.random() * 0.2, w: 0 });
+      const slope = 1 - (y / GRID_SIZE) * 0.8; // downriver
+      const valley = Math.abs(x - GRID_SIZE / 2) / (GRID_SIZE / 2); // center valley
+      const base = slope - valley * 0.6;
+      row.push({ h: base + Math.random() * 0.1, w: 0 });
     }
     t.push(row);
   }
@@ -49,6 +53,9 @@ function step(t: Terrain, rain: number): Terrain {
   const out: number[][] = Array.from({ length: GRID_SIZE }, () =>
     Array(GRID_SIZE).fill(0)
   );
+  const inFlow: number[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array(GRID_SIZE).fill(0)
+  );
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       const cell = withRain[y][x];
@@ -68,6 +75,7 @@ function step(t: Terrain, rain: number): Terrain {
           flow[y][x] -= amt;
           flow[ny][nx] += amt;
           out[y][x] += amt;
+          inFlow[ny][nx] += amt;
           water -= amt;
         }
       }
@@ -77,8 +85,11 @@ function step(t: Terrain, rain: number): Terrain {
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       const change = flow[y][x];
-      res[y][x].w = Math.max(0, res[y][x].w + change);
+      res[y][x].w = Math.max(0, res[y][x].w + change - INFILTRATION_RATE);
       res[y][x].h = Math.max(0, res[y][x].h - out[y][x] * EROSION_RATE);
+      if (inFlow[y][x] > 0) {
+        res[y][x].h += inFlow[y][x] * DEPOSITION_RATE;
+      }
     }
   }
   return res;

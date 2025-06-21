@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FLL 2025–2026 防災教育 Web アプリ
 
-## Getting Started
+**Next.js 15 + React 19 + TypeScript** を用いて、小学生～中学生向けに「川の侵食 → 水害 → ハザードマップ理解 → 3D 可視化・体験」を一つの流れで学べるモジュール群を提供する教育用 Web アプリケーションです。
 
-First, run the development server:
+---
+
+## 🎯 プロジェクト概要
+
+- **目的**
+
+  - 河川の侵食メカニズムから水害発生までを体験的に学習
+  - 紙のハザードマップでは分かりにくい「浸水の深さ・範囲」を直感的に理解
+  - Minecraft 風 3D 環境と連携し、楽しみながら防災・地理リテラシーを向上
+
+- **対象**
+
+  - 小学校高学年～中学生（10～15 歳程度）
+  - 教室ワークショップ、校外学習、家庭での自主学習での利用を想定
+
+- **主な学びのステップ**
+  1. **川の侵食ラボ**：仮想地形上で水流実験 → 侵食・堆積のメカニズム理解
+  2. **洪水ハザードシミュレーター**：現実データを元に 3D 街を再現 → 洪水体験
+  3. **ハザードマップ探検隊**：地図読みクエスト → 安全な避難場所・ルートを探索
+
+---
+
+## 📦 技術スタック
+
+- フレームワーク：Next.js 15 (App Router)
+- UI：React 19 + TypeScript
+- スタイリング：Tailwind CSS
+- 3D 表示：three.js（または Babylon.js）
+- データ可視化：Recharts or D3.js
+- データ連携：GIS オープンデータ（国土交通省 PLATEAU など）
+- （発展）Minecraft 連携：Education Edition の Code Connection / サーバープラグイン
+
+---
+
+## 🚀 セットアップ
 
 ```bash
+# リポジトリをクローン
+git clone https://github.com/your-org/fll-hazard-app.git
+cd fll-hazard-app
+
+# 依存関係をインストール
+npm install
+
+# ローカル開発サーバー起動
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# ブラウザで http://localhost:3000 を開く
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📝 注意点
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `presentation/components/ui` 配下は shadcn/ui のプリミティブのまま運用してください
+- 新規 UI 部品は `src/presentation/components/` 以下に追加して再利用を徹底してください

@@ -20,6 +20,9 @@ interface Cell {
 }
 type Terrain = Cell[][];
 
+const RIVER_WIDTH = 6;
+const RIVER_DEPTH = 0.2;
+
 function createTerrain(): Terrain {
   const t: Terrain = [];
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -28,7 +31,9 @@ function createTerrain(): Terrain {
       const slope = 1 - (y / GRID_SIZE) * 0.8; // downriver
       const valley = Math.abs(x - GRID_SIZE / 2) / (GRID_SIZE / 2); // center valley
       const base = slope - valley * 0.6;
-      row.push({ h: base + Math.random() * 0.1, w: 0 });
+      const inRiver = Math.abs(x - GRID_SIZE / 2) < RIVER_WIDTH / 2;
+      const water = inRiver ? RIVER_DEPTH : 0;
+      row.push({ h: base + Math.random() * 0.1, w: water });
     }
     t.push(row);
   }

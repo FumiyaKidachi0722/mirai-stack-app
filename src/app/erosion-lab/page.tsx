@@ -8,10 +8,11 @@ import RangeControl from '@/presentation/components/RangeControl';
 // Finer grid for smoother appearance
 const GRID_SIZE = 80;
 const CELL_SIZE = 6; // pixel per cell
-const FLOW_FACTOR = 0.25;
-const EROSION_RATE = 0.02;
-const INFILTRATION_RATE = 0.001;
-const DEPOSITION_RATE = EROSION_RATE * 0.5;
+const FLOW_FACTOR = 0.4;
+const EROSION_RATE = 0.05;
+const SLOPE_FACTOR = 0.1;
+const INFILTRATION_RATE = 0.0005;
+const DEPOSITION_RATE = 0.01;
 
 /** Terrain cell with ground height and water depth */
 interface Cell {
@@ -21,7 +22,7 @@ interface Cell {
 type Terrain = Cell[][];
 
 const RIVER_WIDTH = 6;
-const RIVER_DEPTH = 0.2;
+const RIVER_DEPTH = 0.3;
 const RIVER_AMPLITUDE = GRID_SIZE * 0.1;
 const RIVER_FREQUENCY = 2; // waves from top to bottom
 
@@ -97,7 +98,8 @@ function step(t: Terrain, rain: number): Terrain {
     for (let x = 0; x < GRID_SIZE; x++) {
       const change = flow[y][x];
       res[y][x].w = Math.max(0, res[y][x].w + change - INFILTRATION_RATE);
-      res[y][x].h = Math.max(0, res[y][x].h - out[y][x] * EROSION_RATE);
+      const erosion = out[y][x] * (EROSION_RATE + SLOPE_FACTOR);
+      res[y][x].h = Math.max(0, res[y][x].h - erosion);
       if (inFlow[y][x] > 0) {
         res[y][x].h += inFlow[y][x] * DEPOSITION_RATE;
       }

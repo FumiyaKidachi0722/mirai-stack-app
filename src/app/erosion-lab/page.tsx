@@ -10,9 +10,10 @@ const GRID_SIZE = 80;
 const CELL_SIZE = 6; // pixel per cell
 const FLOW_FACTOR = 0.4;
 const EROSION_RATE = 0.05;
-const SLOPE_FACTOR = 0.1;
+const SLOPE_FACTOR = 0.15;
 const INFILTRATION_RATE = 0.0005;
 const DEPOSITION_RATE = 0.01;
+const SMOOTHING = 0.1;
 
 /** Terrain cell with ground height and water depth */
 interface Cell {
@@ -98,14 +99,70 @@ function step(t: Terrain, rain: number): Terrain {
     for (let x = 0; x < GRID_SIZE; x++) {
       const change = flow[y][x];
       res[y][x].w = Math.max(0, res[y][x].w + change - INFILTRATION_RATE);
-      const erosion = out[y][x] * (EROSION_RATE + SLOPE_FACTOR);
+
+      // calculate average downhill slope
+      const h = res[y][x].h;
+      let slopeSum = 0;
+      let count = 0;
+      if (y > 0) {
+        const d = h - res[y - 1][x].h;
+        if (d > 0) slopeSum += d;
+        count++;
+      }
+      if (y < GRID_SIZE - 1) {
+        const d = h - res[y + 1][x].h;
+        if (d > 0) slopeSum += d;
+        count++;
+      }
+      if (x > 0) {
+        const d = h - res[y][x - 1].h;
+        if (d > 0) slopeSum += d;
+        count++;
+      }
+      if (x < GRID_SIZE - 1) {
+        const d = h - res[y][x + 1].h;
+        if (d > 0) slopeSum += d;
+        count++;
+      }
+      const slope = count > 0 ? slopeSum / count : 0;
+
+      const erosion = out[y][x] * (EROSION_RATE + slope * SLOPE_FACTOR);
       res[y][x].h = Math.max(0, res[y][x].h - erosion);
       if (inFlow[y][x] > 0) {
         res[y][x].h += inFlow[y][x] * DEPOSITION_RATE;
       }
     }
   }
-  return res;
+  return smooth(res, SMOOTHING);
+}
+
+function smooth(t: Terrain, amt: number): Terrain {
+  const s = cloneTerrain(t);
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      let sum = t[y][x].h;
+      let count = 1;
+      if (y > 0) {
+        sum += t[y - 1][x].h;
+        count++;
+      }
+      if (y < GRID_SIZE - 1) {
+        sum += t[y + 1][x].h;
+        count++;
+      }
+      if (x > 0) {
+        sum += t[y][x - 1].h;
+        count++;
+      }
+      if (x < GRID_SIZE - 1) {
+        sum += t[y][x + 1].h;
+        count++;
+      }
+      const avg = sum / count;
+      s[y][x].h = t[y][x].h * (1 - amt) + avg * amt;
+    }
+  }
+  return s;
 }
 
 function draw(ctx: CanvasRenderingContext2D, t: Terrain) {

@@ -22,18 +22,24 @@ type Terrain = Cell[][];
 
 const RIVER_WIDTH = 6;
 const RIVER_DEPTH = 0.2;
+const RIVER_AMPLITUDE = GRID_SIZE * 0.1;
+const RIVER_FREQUENCY = 2; // waves from top to bottom
 
 function createTerrain(): Terrain {
   const t: Terrain = [];
   for (let y = 0; y < GRID_SIZE; y++) {
     const row: Cell[] = [];
+    const centerX =
+      GRID_SIZE / 2 +
+      RIVER_AMPLITUDE * Math.sin(((y / GRID_SIZE) * Math.PI * 2) * RIVER_FREQUENCY);
     for (let x = 0; x < GRID_SIZE; x++) {
-      const slope = 1 - (y / GRID_SIZE) * 0.8; // downriver
-      const valley = Math.abs(x - GRID_SIZE / 2) / (GRID_SIZE / 2); // center valley
-      const base = slope - valley * 0.6;
-      const inRiver = Math.abs(x - GRID_SIZE / 2) < RIVER_WIDTH / 2;
+      let base = 1 - (y / GRID_SIZE) * 0.6; // gentle slope downstream
+      if (Math.abs(x - centerX) < RIVER_WIDTH) {
+        base -= 0.3; // carve riverbed
+      }
+      const inRiver = Math.abs(x - centerX) < RIVER_WIDTH / 2;
       const water = inRiver ? RIVER_DEPTH : 0;
-      row.push({ h: base + Math.random() * 0.1, w: water });
+      row.push({ h: base + Math.random() * 0.05, w: water });
     }
     t.push(row);
   }

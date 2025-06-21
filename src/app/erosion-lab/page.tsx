@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
 import RangeControl from '@/presentation/components/RangeControl'
 
 /** Grid and simulation constants */
@@ -134,7 +135,7 @@ export default function ErosionLabPage() {
     <div className="flex flex-col items-center gap-4 p-4">
       <h1 className="text-xl font-bold">川の侵食ラボ</h1>
       <p className="text-sm text-gray-600 max-w-md text-center">
-        雨量を調整して水の流れと侵食を観察しましょう。"Raise ground"を
+        雨量を調整して水の流れと侵食を観察しましょう。&quot;Raise ground&quot;を
         チェックした状態でキャンバスをクリックすると地面を盛り上げます。
       </p>
       <canvas

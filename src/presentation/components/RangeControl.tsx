@@ -6,7 +6,7 @@ interface RangeControlProps {
   max: number
   step?: number
   value: number
-  onChange: (value: number) => void
+  onChange: (_value: number) => void
 }
 
 export default function RangeControl({

@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react'
+import RangeControl from '@/presentation/components/RangeControl'
 
 /** Grid and simulation constants */
 const GRID_SIZE = 40;
@@ -83,6 +84,9 @@ function draw(ctx: CanvasRenderingContext2D, t: Terrain) {
         ctx.fillStyle = `rgba(30, 144, 255, ${a})`;
         ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
       }
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)'
+      ctx.lineWidth = 0.5
+      ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
     }
   }
 }
@@ -129,6 +133,10 @@ export default function ErosionLabPage() {
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <h1 className="text-xl font-bold">川の侵食ラボ</h1>
+      <p className="text-sm text-gray-600 max-w-md text-center">
+        雨量を調整して水の流れと侵食を観察しましょう。"Raise ground"を
+        チェックした状態でキャンバスをクリックすると地面を盛り上げます。
+      </p>
       <canvas
         ref={canvasRef}
         width={GRID_SIZE * CELL_SIZE}
@@ -146,17 +154,14 @@ export default function ErosionLabPage() {
         <button className="px-4 py-2 rounded bg-gray-300" onClick={reset}>
           Reset
         </button>
-        <label className="flex items-center gap-1 text-sm">
-          Rainfall
-          <input
-            type="range"
-            min={0}
-            max={0.05}
-            step={0.005}
-            value={rain}
-            onChange={(e) => setRain(parseFloat(e.target.value))}
-          />
-        </label>
+        <RangeControl
+          label="Rainfall"
+          min={0}
+          max={0.05}
+          step={0.005}
+          value={rain}
+          onChange={setRain}
+        />
         <label className="flex items-center gap-1 text-sm">
           <input
             type="checkbox"

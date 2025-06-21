@@ -1,5 +1,7 @@
 # FLL 2025–2026 防災教育 Web アプリ
 
+https://mirai-stack-app.vercel.app/
+
 **Next.js 15 + React 19 + TypeScript** を用いて、小学生～中学生向けに「川の侵食 → 水害 → ハザードマップ理解 → 3D 可視化・体験」を一つの流れで学べるモジュール群を提供する教育用 Web アプリケーションです。
 
 ---
